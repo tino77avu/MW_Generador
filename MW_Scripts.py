@@ -88,7 +88,7 @@ NOTAS IMPORTANTES
 ------------------------------------------------------------
 - Este script NO ejecuta SQL en tu BD. Solo genera scripts.
 - Ajusta los nombres de tablas/campos si tu DDL difiere (p. ej. user_id en certifiers).
-- Requiere variable de entorno OPENAI_API_KEY.
+- La API Key de OpenAI se ingresa directamente en la interfaz gráfica (opcionalmente puede usarse OPENAI_API_KEY en .env como fallback).
 
 Referencias:
 - Respuestas API (/v1/responses) :contentReference[oaicite:2]{index=2}

@@ -28,12 +28,9 @@ cd MWinner
 pip install -r requirements.txt
 ```
 
-3. Configura tu API Key de OpenAI:
-   - Opción 1: Ingresa tu API Key directamente en la aplicación
-   - Opción 2: Crea un archivo `.env` en la raíz del proyecto:
-   ```
-   OPENAI_API_KEY=tu-api-key-aqui
-   ```
+3. **No se requiere configuración previa**: La API Key de OpenAI se ingresa directamente en la aplicación al ejecutarla.
+   
+   > **Nota opcional**: Si prefieres, puedes crear un archivo `.env` con `OPENAI_API_KEY=tu-api-key-aqui` como respaldo (la aplicación lo usará como fallback si no se ingresa la clave en el formulario).
 
 ## 🎮 Uso
 
@@ -44,20 +41,20 @@ python MW_Scripts.py
 
 ### Flujo de trabajo:
 
-1. **Ingresa tu API Key** (si no está en el archivo .env)
+1. **Ingresa tu API Key de OpenAI** en el campo de la sección "Configuración"
 2. **Configura los parámetros:**
    - Selecciona el dialecto SQL (MySQL, PostgreSQL, SQL Server)
    - Elige el modelo de OpenAI (gpt-4o-mini, gpt-4o, etc.)
    - Configura si usar UUID o autoincrement
 3. **Agrega puestos de trabajo** (obligatorio primero)
-4. **Agrega bancos de preguntas** (se habilita después de agregar puestos)
-5. **Genera los scripts SQL**
+4. **Agrega bancos de preguntas** (se habilita después de agregar al menos un puesto)
+5. **Genera los scripts SQL** haciendo clic en "🚀 Generar Scripts"
 
 ## 📦 Dependencias
 
 - `openai` - Cliente para la API de OpenAI
 - `customtkinter` - Interfaz gráfica moderna
-- `python-dotenv` - Carga de variables de entorno (opcional)
+- `python-dotenv` - Carga de variables de entorno (opcional, solo como fallback)
 - `pydantic` - Validación de datos
 - `rich` - Mejoras en la consola (modo CLI)
 
@@ -69,9 +66,10 @@ python MW_Scripts.py
 
 ## 🔒 Seguridad
 
-- **NO** subas tu archivo `.env` al repositorio (ya está en .gitignore)
 - **NO** compartas tu API Key públicamente
-- La aplicación permite ingresar la API Key desde la interfaz, pero se recomienda usar el archivo `.env`
+- La API Key se ingresa directamente en la aplicación y **NO se guarda** en ningún archivo
+- **NO** subas archivos `.env` al repositorio si decides usarlos (ya está en .gitignore)
+- La aplicación usa la API Key solo durante la ejecución para realizar las llamadas a OpenAI
 
 ## 📄 Licencia
 
