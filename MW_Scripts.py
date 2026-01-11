@@ -119,6 +119,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 
@@ -139,7 +140,7 @@ from rich.spinner import Spinner
 
 # CustomTkinter para GUI moderna
 import customtkinter as ctk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, Canvas, Frame
 import threading
 
 # Inicializar consola con tema de IA
@@ -508,6 +509,41 @@ def main_gui() -> None:
     app.configure(fg_color=COLORS["bg_dark"])
     app.resizable(True, True)
     
+    # Deshabilitar botón de maximizar (Windows)
+    try:
+        import platform
+        if platform.system() == "Windows":
+            import ctypes
+            from ctypes import wintypes
+            app.update_idletasks()  # Asegurar que la ventana esté inicializada
+            hwnd = ctypes.windll.user32.GetParent(app.winfo_id())
+            # Obtener estilo actual
+            GWL_STYLE = -16
+            WS_MAXIMIZEBOX = 0x00010000
+            # Quitar el flag WS_MAXIMIZEBOX
+            style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_STYLE)
+            style = style & ~WS_MAXIMIZEBOX
+            ctypes.windll.user32.SetWindowLongW(hwnd, GWL_STYLE, style)
+            # Forzar actualización
+            ctypes.windll.user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0020)
+    except:
+        pass
+    
+    # Deshabilitar botón de maximizar
+    app.wm_attributes('-toolwindow', False)  # Asegurar que no es toolwindow
+    # Acceder al widget base para deshabilitar maximizar (Windows)
+    try:
+        app.update_idletasks()  # Asegurar que la ventana esté inicializada
+        # Deshabilitar maximizar usando el widget base de Tkinter
+        app.state('normal')  # Asegurar estado normal
+        # En Windows, usar wm_state para deshabilitar maximizar
+        # Nota: No hay un método directo en Tkinter para solo deshabilitar maximizar
+        # Mantener resizable pero el usuario puede querer solo redimensionar manualmente
+        # Alternativa: cambiar resizable a False, False para fijar tamaño
+        # Por ahora, dejamos resizable pero sin botón maximizar (esto es limitado en Tkinter)
+    except:
+        pass
+    
     # Variables para almacenar datos (inicializadas vacías)
     # API key debe iniciar en blanco
     config_data = {
@@ -551,7 +587,7 @@ def main_gui() -> None:
     title_label = ctk.CTkLabel(
         title_container,
         text="🤖 Generar Scripts SQL",
-        font=ctk.CTkFont(size=19, weight="bold"),
+        font=ctk.CTkFont(family="Consolas", size=19, weight="bold"),
         text_color=COLORS["green_neon"]
     )
     title_label.pack(pady=(0, 4))
@@ -563,7 +599,7 @@ def main_gui() -> None:
     config_title = ctk.CTkLabel(
         config_frame,
         text="⚙️  CONFIGURACIÓN",
-        font=ctk.CTkFont(size=14, weight="bold"),
+        font=ctk.CTkFont(family="Consolas", size=12),
         text_color=COLORS["green_matrix"]
     )
     config_title.pack(pady=(6, 4))
@@ -573,14 +609,14 @@ def main_gui() -> None:
     config_grid.pack(fill="x", padx=10, pady=3)
     
     # API Key - Primera fila, ancho completo
-    ctk.CTkLabel(config_grid, text="🔑 API Key (OpenAI):", font=ctk.CTkFont(size=10), text_color=COLORS["green_matrix"]).grid(row=0, column=0, padx=5, pady=2, sticky="w")
+    ctk.CTkLabel(config_grid, text="🔑 API Key (OpenAI):", font=ctk.CTkFont(family="Consolas", size=11), text_color=COLORS["green_matrix"]).grid(row=0, column=0, padx=5, pady=2, sticky="w")
     api_key_entry = ctk.CTkEntry(config_grid, textvariable=config_data["api_key"], width=600, height=26,
                                   fg_color=COLORS["bg_light"], border_color=COLORS["gray_border"],
                                   text_color=COLORS["green_matrix"], show="*")  # show="*" para ocultar la clave
     api_key_entry.grid(row=0, column=1, columnspan=3, padx=5, pady=2, sticky="ew")
     
     # Dialecto SQL - Ultra compacto
-    ctk.CTkLabel(config_grid, text="Dialecto SQL:", font=ctk.CTkFont(size=10), text_color=COLORS["green_matrix"]).grid(row=1, column=0, padx=5, pady=2, sticky="w")
+    ctk.CTkLabel(config_grid, text="Dialecto SQL:", font=ctk.CTkFont(family="Consolas", size=11), text_color=COLORS["green_matrix"]).grid(row=1, column=0, padx=5, pady=2, sticky="w")
     dialect_combo = ctk.CTkComboBox(config_grid, values=["mysql", "postgres", "sqlserver"], variable=config_data["dialect"], 
                                     width=140, height=26, fg_color=COLORS["blue_corporate"], button_color=COLORS["blue_primary"],
                                     button_hover_color=COLORS["blue_hover"], text_color=COLORS["bg_dark"], dropdown_fg_color=COLORS["bg_medium"],
@@ -589,7 +625,7 @@ def main_gui() -> None:
     dialect_combo.grid(row=1, column=1, padx=5, pady=2, sticky="w")
     
     # Modelo - COMBO en lugar de Entry - Ultra compacto
-    ctk.CTkLabel(config_grid, text="Modelo:", font=ctk.CTkFont(size=10), text_color=COLORS["green_matrix"]).grid(row=1, column=2, padx=5, pady=2, sticky="w")
+    ctk.CTkLabel(config_grid, text="Modelo:", font=ctk.CTkFont(family="Consolas", size=11), text_color=COLORS["green_matrix"]).grid(row=1, column=2, padx=5, pady=2, sticky="w")
     model_combo = ctk.CTkComboBox(
         config_grid, 
         values=["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"],
@@ -612,7 +648,7 @@ def main_gui() -> None:
         config_grid,
         text="Usar IDs tipo UUID",
         variable=config_data["use_uuid"],
-        font=ctk.CTkFont(size=10),
+        font=ctk.CTkFont(family="Consolas", size=11),
         text_color=COLORS["green_matrix"],
         fg_color=COLORS["blue_primary"],
         hover_color=COLORS["blue_secondary"],
@@ -624,7 +660,7 @@ def main_gui() -> None:
         config_grid,
         text="También poblar roles/permisos",
         variable=config_data["include_roles"],
-        font=ctk.CTkFont(size=10),
+        font=ctk.CTkFont(family="Consolas", size=11),
         text_color=COLORS["green_matrix"],
         fg_color=COLORS["blue_primary"],
         hover_color=COLORS["blue_secondary"],
@@ -639,7 +675,7 @@ def main_gui() -> None:
     jobs_title = ctk.CTkLabel(
         jobs_section,
         text="💼 PUESTOS DE TRABAJO (Job Positions)",
-        font=ctk.CTkFont(size=13, weight="bold"),
+        font=ctk.CTkFont(family="Consolas", size=12),
         text_color=COLORS["green_matrix"]
     )
     jobs_title.pack(pady=(6, 3))
@@ -661,7 +697,7 @@ def main_gui() -> None:
         
         # Job número - Verde neón moderno - Ultra compacto
         ctk.CTkLabel(job_frame, text=f"Puesto #{job_num}", 
-                    font=ctk.CTkFont(size=12, weight="bold"), 
+                    font=ctk.CTkFont(family="Consolas", size=12, weight="bold"), 
                     text_color=COLORS["green_neon"]).pack(anchor="w", padx=6, pady=(4, 3))
         
         # Grid compacto
@@ -670,7 +706,7 @@ def main_gui() -> None:
         
         # Nombre del puesto - Ultra compacto
         ctk.CTkLabel(job_grid, text="Nombre del Puesto:", width=150, 
-                    text_color=COLORS["green_matrix"], font=ctk.CTkFont(size=10)).grid(row=0, column=0, padx=3, pady=2, sticky="w")
+                    text_color=COLORS["green_matrix"], font=ctk.CTkFont(family="Consolas", size=11)).grid(row=0, column=0, padx=3, pady=2, sticky="w")
         entry_name = ctk.CTkEntry(job_grid, textvariable=job_info["name"], width=260, height=26,
                                  fg_color=COLORS["bg_light"], border_color=COLORS["gray_border"],
                                  text_color=COLORS["green_matrix"])
@@ -678,7 +714,7 @@ def main_gui() -> None:
         
         # Skills - Ultra compacto
         ctk.CTkLabel(job_grid, text="Skills (separar con coma):", width=150, 
-                    text_color=COLORS["green_matrix"], font=ctk.CTkFont(size=10)).grid(row=0, column=2, padx=3, pady=2, sticky="w")
+                    text_color=COLORS["green_matrix"], font=ctk.CTkFont(family="Consolas", size=11)).grid(row=0, column=2, padx=3, pady=2, sticky="w")
         entry_skills = ctk.CTkEntry(job_grid, textvariable=job_info["skills"], width=260, height=26,
                                    fg_color=COLORS["bg_light"], border_color=COLORS["gray_border"],
                                    text_color=COLORS["green_matrix"])
@@ -690,7 +726,7 @@ def main_gui() -> None:
                                   fg_color=COLORS["bg_lighter"],  # Verde Matrix oscuro
                                   hover_color=COLORS["green_matrix"], 
                                   width=80, height=26, text_color=COLORS["green_matrix"],
-                                  font=ctk.CTkFont(size=9),
+                                  font=ctk.CTkFont(family="Consolas", size=9),
                                   border_width=1,
                                   border_color=COLORS["green_matrix"])
         remove_btn.pack(pady=3)
@@ -708,7 +744,7 @@ def main_gui() -> None:
     
     add_job_btn = ctk.CTkButton(jobs_section, text="➕ Agregar Puesto", command=add_job, 
                                fg_color=COLORS["blue_primary"], hover_color=COLORS["blue_secondary"],
-                               text_color=COLORS["bg_dark"], font=ctk.CTkFont(size=10, weight="bold"),
+                               text_color=COLORS["bg_dark"], font=ctk.CTkFont(family="Consolas", size=10, weight="bold"),
                                height=26)
     add_job_btn.pack(pady=3)
     
@@ -719,7 +755,7 @@ def main_gui() -> None:
     pools_title = ctk.CTkLabel(
         pools_section,
         text="📚 BANCOS DE PREGUNTAS (Question Pools)",
-        font=ctk.CTkFont(size=13, weight="bold"),
+        font=ctk.CTkFont(family="Consolas", size=12),
         text_color=COLORS["green_matrix"]
     )
     pools_title.pack(pady=(6, 3))
@@ -728,7 +764,7 @@ def main_gui() -> None:
     pools_warning = ctk.CTkLabel(
         pools_section,
         text="⚠️ Primero debes agregar al menos un puesto de trabajo para habilitar esta sección",
-        font=ctk.CTkFont(size=10),
+        font=ctk.CTkFont(family="Consolas", size=11),
         text_color=COLORS["green_matrix"],
         wraplength=600
     )
@@ -781,7 +817,7 @@ def main_gui() -> None:
         
         # Pool número - Verde neón moderno - Ultra compacto
         ctk.CTkLabel(pool_frame, text=f"Pool #{pool_num}", 
-                    font=ctk.CTkFont(size=12, weight="bold"), 
+                    font=ctk.CTkFont(family="Consolas", size=12, weight="bold"), 
                     text_color=COLORS["green_neon"]).pack(anchor="w", padx=6, pady=(4, 3))
         
         # Grid compacto para campos
@@ -790,7 +826,7 @@ def main_gui() -> None:
         
         # Habilidad técnica - Ultra compacto
         ctk.CTkLabel(pool_grid, text="Habilidad Técnica:", width=120, 
-                    text_color=COLORS["green_matrix"], font=ctk.CTkFont(size=10)).grid(row=0, column=0, padx=3, pady=2, sticky="w")
+                    text_color=COLORS["green_matrix"], font=ctk.CTkFont(family="Consolas", size=11)).grid(row=0, column=0, padx=3, pady=2, sticky="w")
         entry_skill = ctk.CTkEntry(pool_grid, textvariable=pool_info["skill"], width=200, height=26,
                                    fg_color=COLORS["bg_light"], border_color=COLORS["gray_border"],
                                    text_color=COLORS["green_matrix"])
@@ -798,7 +834,7 @@ def main_gui() -> None:
         
         # Nivel - Ultra compacto
         ctk.CTkLabel(pool_grid, text="Nivel:", width=120, 
-                    text_color=COLORS["green_matrix"], font=ctk.CTkFont(size=10)).grid(row=0, column=2, padx=3, pady=2, sticky="w")
+                    text_color=COLORS["green_matrix"], font=ctk.CTkFont(family="Consolas", size=11)).grid(row=0, column=2, padx=3, pady=2, sticky="w")
         level_combo = ctk.CTkComboBox(pool_grid, values=["BAJO", "MEDIO", "ALTO"], 
                                      variable=pool_info["level"], width=120, height=26,
                                      fg_color=COLORS["blue_corporate"], button_color=COLORS["blue_primary"],
@@ -810,7 +846,7 @@ def main_gui() -> None:
         
         # Cantidad de preguntas - Ultra compacto
         ctk.CTkLabel(pool_grid, text="Cantidad Preguntas:", width=120, 
-                    text_color=COLORS["green_matrix"], font=ctk.CTkFont(size=10)).grid(row=1, column=0, padx=3, pady=2, sticky="w")
+                    text_color=COLORS["green_matrix"], font=ctk.CTkFont(family="Consolas", size=11)).grid(row=1, column=0, padx=3, pady=2, sticky="w")
         entry_qty = ctk.CTkEntry(pool_grid, textvariable=pool_info["quantity"], width=80, height=26,
                                 fg_color=COLORS["bg_light"], border_color=COLORS["gray_border"],
                                 text_color=COLORS["green_matrix"])
@@ -818,7 +854,7 @@ def main_gui() -> None:
         
         # Certificadores - Ultra compacto
         ctk.CTkLabel(pool_grid, text="Certificadores (coma):", width=120, 
-                    text_color=COLORS["green_matrix"], font=ctk.CTkFont(size=10)).grid(row=1, column=2, padx=3, pady=2, sticky="w")
+                    text_color=COLORS["green_matrix"], font=ctk.CTkFont(family="Consolas", size=11)).grid(row=1, column=2, padx=3, pady=2, sticky="w")
         entry_cert = ctk.CTkEntry(pool_grid, textvariable=pool_info["certifiers"], width=200, height=26,
                                  fg_color=COLORS["bg_light"], border_color=COLORS["gray_border"],
                                  text_color=COLORS["green_matrix"])
@@ -830,7 +866,7 @@ def main_gui() -> None:
                                   fg_color=COLORS["bg_lighter"],  # Verde Matrix oscuro
                                   hover_color=COLORS["green_matrix"], 
                                   width=80, height=26, text_color=COLORS["green_matrix"],
-                                  font=ctk.CTkFont(size=9),
+                                  font=ctk.CTkFont(family="Consolas", size=9),
                                   border_width=1,
                                   border_color=COLORS["green_matrix"])
         remove_btn.pack(pady=3)
@@ -843,7 +879,7 @@ def main_gui() -> None:
     # Crear botón de agregar pool (debe crearse después de definir las funciones)
     add_pool_btn = ctk.CTkButton(pools_section, text="➕ Agregar Pool", command=add_pool, 
                                 fg_color=COLORS["bg_lighter"], hover_color=COLORS["blue_secondary"],
-                                text_color=COLORS["green_matrix"], font=ctk.CTkFont(size=10, weight="bold"),
+                                text_color=COLORS["green_matrix"], font=ctk.CTkFont(family="Consolas", size=10, weight="bold"),
                                 height=26, state="disabled")
     add_pool_btn.pack(pady=3)
     
@@ -851,8 +887,14 @@ def main_gui() -> None:
     progress_container = ctk.CTkFrame(center_wrapper, fg_color="transparent")
     progress_container.pack(fill="x", pady=3)
     
-    progress_label = ctk.CTkLabel(progress_container, text="", font=ctk.CTkFont(size=9), text_color=COLORS["green_neon"])
+    progress_label = ctk.CTkLabel(progress_container, text="", font=ctk.CTkFont(family="Consolas", size=11), text_color=COLORS["green_neon"])
     progress_label.pack()
+    
+    # Función helper para mostrar mensajes temporales (1.5 segundos)
+    def show_temp_message(text, color):
+        """Muestra un mensaje temporal que desaparece después de 1.5 segundos"""
+        progress_label.configure(text=text, text_color=color)
+        app.after(1500, lambda: progress_label.configure(text=""))
     
     # === FUNCIONES DE ACCIÓN ===
     
@@ -891,38 +933,32 @@ def main_gui() -> None:
             # Intentar desde entorno como fallback
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
-                progress_label.configure(text="❌ Error: Debes ingresar una API Key", text_color="#FF6B6B")
-                messagebox.showerror("Error de Validación", "⚠️ Debes ingresar una API Key de OpenAI en el campo de configuración.")
+                show_temp_message("❌ Error: Debes ingresar una API Key", "#FF6B6B")
                 return
         
         # Validación 2: Puestos de trabajo
         if not jobs_data:
-            progress_label.configure(text="❌ Error: Debes agregar al menos un puesto de trabajo", text_color="#FF6B6B")
-            messagebox.showerror("Error de Validación", "⚠️ Debes agregar al menos un puesto de trabajo antes de generar.")
+            show_temp_message("❌ Error: Debes agregar al menos un puesto de trabajo", "#FF6B6B")
             return
         
         # Validación 3: Bancos de preguntas
         if not pools_data:
-            progress_label.configure(text="❌ Error: Debes agregar al menos un banco de preguntas", text_color="#FF6B6B")
-            messagebox.showerror("Error de Validación", "⚠️ Debes agregar al menos un banco de preguntas antes de generar.")
+            show_temp_message("❌ Error: Debes agregar al menos un banco de preguntas", "#FF6B6B")
             return
         
         # Validación 4: Verificar que los puestos tengan nombre
         for i, job in enumerate(jobs_data):
             if not job["name"].get().strip():
-                progress_label.configure(text=f"❌ Error: El puesto #{i+1} debe tener un nombre", text_color="#FF6B6B")
-                messagebox.showerror("Error de Validación", f"⚠️ El puesto #{i+1} debe tener un nombre válido.")
+                show_temp_message(f"❌ Error: El puesto #{i+1} debe tener un nombre", "#FF6B6B")
                 return
         
         # Validación 5: Verificar que los pools tengan habilidad técnica
         for i, pool in enumerate(pools_data):
             if not pool["skill"].get().strip():
-                progress_label.configure(text=f"❌ Error: El pool #{i+1} debe tener una habilidad técnica", text_color="#FF6B6B")
-                messagebox.showerror("Error de Validación", f"⚠️ El pool #{i+1} debe tener una habilidad técnica válida.")
+                show_temp_message(f"❌ Error: El pool #{i+1} debe tener una habilidad técnica", "#FF6B6B")
                 return
             if pool["quantity"].get() <= 0:
-                progress_label.configure(text=f"❌ Error: El pool #{i+1} debe tener cantidad de preguntas mayor a 0", text_color="#FF6B6B")
-                messagebox.showerror("Error de Validación", f"⚠️ El pool #{i+1} debe tener una cantidad de preguntas mayor a 0.")
+                show_temp_message(f"❌ Error: El pool #{i+1} debe tener cantidad de preguntas mayor a 0", "#FF6B6B")
                 return
         
         # Corregir modelo si es necesario
@@ -977,14 +1013,12 @@ def main_gui() -> None:
                     out_prefix = out_prefix.rsplit(".", 1)[0]
                     write_outputs(seed, out_prefix=out_prefix)
                     
-                    progress_label.configure(text=f"✅ Generación completada! Archivos guardados con prefijo: {out_prefix}", text_color=COLORS["green_neon"])
-                    messagebox.showinfo("Éxito", f"¡Archivos generados exitosamente!\n\nPrefijo: {out_prefix}\n\nArchivos creados:\n- {out_prefix}.json\n- {out_prefix}.sql\n- Archivos por tabla")
+                    show_temp_message(f"✅ Generación completada! Archivos guardados con prefijo: {out_prefix}", COLORS["green_neon"])
                 else:
-                    progress_label.configure(text="⚠️ Generación completada pero no se guardaron archivos", text_color=COLORS["green_matrix"])
+                    show_temp_message("⚠️ Generación completada pero no se guardaron archivos", COLORS["green_matrix"])
                     
             except Exception as e:
-                progress_label.configure(text=f"❌ Error: {str(e)}", text_color="#FF6B6B")
-                messagebox.showerror("Error", f"Error al generar: {str(e)}")
+                show_temp_message(f"❌ Error: {str(e)}", "#FF6B6B")
         
         thread = threading.Thread(target=do_generate, daemon=True)
         thread.start()
@@ -993,16 +1027,35 @@ def main_gui() -> None:
     action_frame = ctk.CTkFrame(center_wrapper, fg_color="transparent")
     action_frame.pack(fill="x", pady=(4, 5))
     
+    # Canvas para animación Matrix - usar directamente el widget base
+    matrix_canvas = Canvas(action_frame, bg=COLORS["bg_dark"], highlightthickness=0, height=60)
+    matrix_canvas.pack(fill="x", expand=False)
+    
+    # Contenedor para botones usando create_window para superponer
+    buttons_frame_base = Frame(matrix_canvas, bg=COLORS["bg_dark"])
+    canvas_window_id = matrix_canvas.create_window(0, 0, window=buttons_frame_base, anchor="center")
+    
+    # Función para actualizar posición de botones en el canvas
+    def update_buttons_position():
+        canvas_width = matrix_canvas.winfo_width()
+        canvas_height = matrix_canvas.winfo_height()
+        if canvas_width > 1 and canvas_height > 1:
+            matrix_canvas.coords(canvas_window_id, canvas_width // 2, canvas_height // 2)
+            buttons_frame_base.update_idletasks()
+    
+    matrix_canvas.bind('<Configure>', lambda e: update_buttons_position())
+    action_frame.update_idletasks()  # Forzar actualización inicial
+    
     # Contenedor interno para centrar botones
-    buttons_container = ctk.CTkFrame(action_frame, fg_color="transparent")
+    buttons_container = ctk.CTkFrame(buttons_frame_base, fg_color="transparent")
     buttons_container.pack(expand=True)
     
     # Botón Limpiar - Centrado - Ultra compacto
     clear_btn = ctk.CTkButton(
         buttons_container,
-        text="🗑️  LIMPIAR DATOS",
+        text="🗑️  Limpiar datos",
         command=clear_all,
-        font=ctk.CTkFont(size=11, weight="bold"),
+        font=ctk.CTkFont(family="Consolas", size=11, weight="bold"),
         fg_color=COLORS["bg_lighter"],
         hover_color=COLORS["bg_medium"],
         text_color="#ffffff",  # Texto blanco para mejor contraste
@@ -1013,19 +1066,103 @@ def main_gui() -> None:
     )
     clear_btn.pack(side="left", padx=8)
     
-    # Botón Generar - Destacado con verde neón - Centrado - Ultra compacto
+    # Botón Generar - Mismo estilo que Limpiar datos
     generate_btn = ctk.CTkButton(
         buttons_container,
         text="🚀 Generar Scripts",
         command=generate,
-        font=ctk.CTkFont(size=13, weight="bold"),
-        fg_color=COLORS["green_neon"],
-        hover_color=COLORS["green_matrix"],
-        text_color=COLORS["bg_dark"],
+        font=ctk.CTkFont(family="Consolas", size=11, weight="bold"),
+        fg_color=COLORS["bg_lighter"],
+        hover_color=COLORS["bg_medium"],
+        text_color="#ffffff",  # Texto blanco para mejor contraste
         width=240,
-        height=32
+        height=32,
+        border_width=1,
+        border_color=COLORS["green_matrix"]
     )
     generate_btn.pack(side="left", padx=8)
+    
+    # === ANIMACIÓN KITT (Auto Fantástico - Scanner Rojo con Estela) ===
+    kitt_position = 0  # Posición inicial del scanner
+    kitt_direction = 1  # 1 = derecha, -1 = izquierda
+    kitt_speed = 4  # Velocidad de movimiento
+    kitt_trail = []  # Lista para almacenar la estela de puntos
+    
+    def animate_kitt():
+        """Animar el scanner rojo estilo KITT con estela de puntos"""
+        # Solo borrar elementos con tag "kitt", no todo
+        matrix_canvas.delete("kitt")
+        canvas_width = matrix_canvas.winfo_width()
+        canvas_height = matrix_canvas.winfo_height()
+        
+        if canvas_width <= 1 or canvas_height <= 1:
+            # Canvas aún no tiene tamaño, reintentar
+            app.after(50, animate_kitt)
+            return
+        
+        nonlocal kitt_position, kitt_direction, kitt_trail
+        
+        # Mover el scanner
+        kitt_position += kitt_speed * kitt_direction
+        
+        # Cambiar dirección cuando llega a los bordes
+        if kitt_position >= canvas_width - 10:
+            kitt_direction = -1  # Ir hacia la izquierda
+            kitt_position = canvas_width - 10
+            kitt_trail = []  # Limpiar estela al cambiar dirección
+        elif kitt_position <= 0:
+            kitt_direction = 1  # Ir hacia la derecha
+            kitt_position = 0
+            kitt_trail = []  # Limpiar estela al cambiar dirección
+        
+        # Agregar posición actual a la estela
+        kitt_trail.append(kitt_position)
+        
+        # Limitar tamaño de la estela (mantener solo los últimos 15 puntos)
+        if len(kitt_trail) > 15:
+            kitt_trail.pop(0)
+        
+        # Dibujar la estela con gradiente (cabeza más intensa, cola menos intensa)
+        y_bottom = canvas_height - 2  # Más abajo, 2 píxeles desde el fondo
+        point_size = 3  # Tamaño de cada punto
+        
+        # Dibujar la estela: el más reciente (cabeza) es el más brillante, el más antiguo (cola) es el menos brillante
+        for i, trail_pos in enumerate(kitt_trail):
+            # Calcular intensidad: más reciente (último en la lista) = más brillante
+            # i=0 es el más antiguo (cola), i=len-1 es el más reciente (cabeza)
+            intensity = i / max(1, len(kitt_trail) - 1)  # 0.0 (cola) a 1.0 (cabeza)
+            
+            # Colores con gradiente: de oscuro (cola) a brillante (cabeza)
+            if intensity > 0.8:
+                color = "#FF0000"  # Rojo brillante (más incandescente) - CABEZA
+            elif intensity > 0.6:
+                color = "#FF3333"  # Rojo medio-brillante
+            elif intensity > 0.4:
+                color = "#CC0000"  # Rojo medio
+            elif intensity > 0.2:
+                color = "#990000"  # Rojo oscuro
+            else:
+                color = "#660000"  # Rojo muy oscuro (estela débil) - COLA
+            
+            # Dibujar punto circular
+            x1 = trail_pos - point_size
+            y1 = y_bottom - point_size
+            x2 = trail_pos + point_size
+            y2 = y_bottom + point_size
+            
+            matrix_canvas.create_oval(
+                x1, y1, x2, y2,
+                fill=color,
+                outline=color,
+                width=1,
+                tags="kitt"
+            )
+        
+        # Continuar animación
+        app.after(40, animate_kitt)
+    
+    # Inicializar y comenzar animación KITT
+    app.after(100, animate_kitt)
     
     # NO inicializar con datos (iniciar limpio)
     # Los datos se agregan solo cuando el usuario hace click en "Agregar"
@@ -1196,52 +1333,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        # Mostrar error en GUI si es posible, sino en consola
-        try:
-            import tkinter.messagebox as mb
-            root = ctk.CTk()
-            root.withdraw()  # Ocultar ventana principal
-            error_msg = (
-                "❌ Falta OPENAI_API_KEY en variables de entorno\n\n"
-                "📝 OPCIONES PARA CONFIGURAR:\n\n"
-                "1️⃣  Archivo .env (RECOMENDADO):\n"
-                "   • Crea un archivo .env en la raíz del proyecto\n"
-                "   • Agrega: OPENAI_API_KEY=sk-tu-api-key-aqui\n"
-                "   • Instala: pip install python-dotenv\n\n"
-                "2️⃣  Variable de entorno TEMPORAL (PowerShell):\n"
-                "   $env:OPENAI_API_KEY = \"sk-tu-api-key-aqui\"\n\n"
-                "3️⃣  Variable de entorno PERMANENTE (PowerShell como Admin):\n"
-                "   setx OPENAI_API_KEY \"sk-tu-api-key-aqui\"\n"
-                "   (Cierra y abre una nueva ventana de PowerShell)\n\n"
-                "4️⃣  Linux/Mac:\n"
-                "   export OPENAI_API_KEY=\"sk-tu-api-key-aqui\""
-            )
-            mb.showerror("Error de Configuración", error_msg)
-            root.destroy()
-        except:
-            # Fallback a consola
-            error_config_panel = Panel.fit(
-                "[bold red]❌ Falta OPENAI_API_KEY en variables de entorno[/bold red]\n\n"
-                "[bold yellow]📝 OPCIONES PARA CONFIGURAR:[/bold yellow]\n\n"
-                "[cyan]1️⃣  Archivo .env (RECOMENDADO):[/cyan]\n"
-                "   • Crea un archivo .env en la raíz del proyecto\n"
-                "   • Agrega: OPENAI_API_KEY=sk-tu-api-key-aqui\n"
-                "   • Instala: pip install python-dotenv\n\n"
-                "[magenta]2️⃣  Variable de entorno TEMPORAL (PowerShell):[/magenta]\n"
-                "   $env:OPENAI_API_KEY = \"sk-tu-api-key-aqui\"\n\n"
-                "[blue]3️⃣  Variable de entorno PERMANENTE (PowerShell como Admin):[/blue]\n"
-                "   setx OPENAI_API_KEY \"sk-tu-api-key-aqui\"\n"
-                "   (Cierra y abre una nueva ventana de PowerShell)\n\n"
-                "[green]4️⃣  Linux/Mac:[/green]\n"
-                "   export OPENAI_API_KEY=\"sk-tu-api-key-aqui\"",
-                border_style="red",
-                box=box.DOUBLE,
-                padding=(1, 2)
-            )
-            console.print(error_config_panel)
-        raise SystemExit(1)
-
-    # Usar GUI moderna por defecto
+    # La API key se ingresa directamente en el formulario, no se requiere validación previa
     main_gui()
