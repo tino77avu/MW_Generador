@@ -459,8 +459,8 @@ def main_gui() -> None:
     # Paleta de colores DARK MODE - Verde Matrix Neón
     COLORS = {
         # Fondos oscuros (modo dark puro - Matrix style)
-        "bg_dark": "#0a0a0a",           # Casi negro - Fondo principal ultra oscuro
-        "bg_medium": "#0d1b0a",         # Verde oscuro muy tenue - Frames y secciones
+        "bg_dark": "#000000",           # Negro puro - Fondo principal totalmente negro
+        "bg_medium": "#000000",         # Negro puro - Frames y secciones
         "bg_light": "#152015",          # Verde oscuro - Elementos internos
         "bg_lighter": "#1a2a1a",        # Verde medio oscuro - Hover states
         
@@ -509,10 +509,9 @@ def main_gui() -> None:
     app.resizable(True, True)
     
     # Variables para almacenar datos (inicializadas vacías)
-    # Cargar API key del entorno si existe
-    env_api_key = os.getenv("OPENAI_API_KEY", "")
+    # API key debe iniciar en blanco
     config_data = {
-        "api_key": ctk.StringVar(value=env_api_key),  # Precargar desde .env si existe
+        "api_key": ctk.StringVar(value=""),  # Inicia en blanco
         "dialect": ctk.StringVar(value="mysql"),
         "use_uuid": ctk.BooleanVar(value=True),
         "include_roles": ctk.BooleanVar(value=False),
@@ -526,13 +525,13 @@ def main_gui() -> None:
     main_frame = ctk.CTkScrollableFrame(app, fg_color=COLORS["bg_dark"])
     main_frame.pack(fill="both", expand=True, padx=0, pady=0)
     
-    # Contenedor interno para centrar todo el contenido
-    content_container = ctk.CTkFrame(main_frame, fg_color="transparent")
-    content_container.pack(fill="both", expand=True)
+    # Contenedor interno para centrar todo el contenido - Con borde verde Matrix alrededor de todo el formulario
+    content_container = ctk.CTkFrame(main_frame, fg_color=COLORS["bg_dark"], border_width=2, border_color=COLORS["green_matrix"])
+    content_container.pack(fill="both", expand=True, padx=20, pady=20)
     
     # Centrar horizontalmente el contenido - Menos padding arriba
     center_wrapper = ctk.CTkFrame(content_container, fg_color="transparent")
-    center_wrapper.pack(expand=True, fill="x", padx=20, pady=2)
+    center_wrapper.pack(expand=True, fill="x", padx=10, pady=10)
     
     # Asegurar que el scroll comience desde arriba
     def scroll_to_top():
@@ -558,7 +557,7 @@ def main_gui() -> None:
     title_label.pack(pady=(0, 4))
     
     # === SECCIÓN CONFIGURACIÓN ===
-    config_frame = ctk.CTkFrame(center_wrapper, fg_color=COLORS["bg_medium"], border_width=1, border_color=COLORS["gray_border"])
+    config_frame = ctk.CTkFrame(center_wrapper, fg_color=COLORS["bg_medium"], border_width=0)
     config_frame.pack(fill="x", pady=(0, 5))
     
     config_title = ctk.CTkLabel(
@@ -634,7 +633,7 @@ def main_gui() -> None:
     roles_check.grid(row=2, column=2, columnspan=2, padx=5, pady=2, sticky="w")
     
     # === SECCIÓN JOBS (PRIMERO) ===
-    jobs_section = ctk.CTkFrame(center_wrapper, fg_color=COLORS["bg_medium"], border_width=1, border_color=COLORS["gray_border"])
+    jobs_section = ctk.CTkFrame(center_wrapper, fg_color=COLORS["bg_medium"], border_width=0)
     jobs_section.pack(fill="x", pady=(0, 5))
     
     jobs_title = ctk.CTkLabel(
@@ -649,7 +648,7 @@ def main_gui() -> None:
     jobs_container.pack(fill="both", expand=True, padx=8, pady=3)
     
     def add_job():
-        job_frame = ctk.CTkFrame(jobs_container, fg_color=COLORS["bg_medium"], border_width=1, border_color=COLORS["gray_border"])
+        job_frame = ctk.CTkFrame(jobs_container, fg_color=COLORS["bg_medium"], border_width=1, border_color=COLORS["green_matrix"])
         job_frame.pack(fill="x", pady=5, padx=6)
         
         job_num = len(jobs_data) + 1
@@ -714,7 +713,7 @@ def main_gui() -> None:
     add_job_btn.pack(pady=3)
     
     # === SECCIÓN POOLS (DESPUÉS DE JOBS) ===
-    pools_section = ctk.CTkFrame(center_wrapper, fg_color=COLORS["bg_medium"], border_width=1, border_color=COLORS["gray_border"])
+    pools_section = ctk.CTkFrame(center_wrapper, fg_color=COLORS["bg_medium"], border_width=0)
     pools_section.pack(fill="x", pady=(0, 5))
     
     pools_title = ctk.CTkLabel(
@@ -767,7 +766,7 @@ def main_gui() -> None:
                 add_pool_btn.configure(state="disabled", fg_color=COLORS["bg_lighter"], text_color=COLORS["green_matrix"])
     
     def add_pool():
-        pool_frame = ctk.CTkFrame(pools_container, fg_color=COLORS["bg_medium"], border_width=1, border_color=COLORS["gray_border"])
+        pool_frame = ctk.CTkFrame(pools_container, fg_color=COLORS["bg_medium"], border_width=1, border_color=COLORS["green_matrix"])
         pool_frame.pack(fill="x", pady=5, padx=6)
         
         pool_num = len(pools_data) + 1
@@ -871,9 +870,8 @@ def main_gui() -> None:
                 job_info["frame"].destroy()
         jobs_data.clear()
         
-        # Resetear configuración a valores por defecto (mantener API key si existe en .env)
-        env_api_key = os.getenv("OPENAI_API_KEY", "")
-        config_data["api_key"].set(env_api_key)
+        # Resetear configuración a valores por defecto (API key en blanco)
+        config_data["api_key"].set("")  # Limpiar API key
         config_data["dialect"].set("mysql")
         config_data["use_uuid"].set(True)
         config_data["include_roles"].set(False)
@@ -887,21 +885,51 @@ def main_gui() -> None:
     
     # Función para generar seeds
     def generate():
-        # Validar
-        if not pools_data:
-            messagebox.showerror("Error", "Debes agregar al menos un Pool de preguntas")
+        # Validación 1: API Key (obligatoria)
+        api_key = config_data["api_key"].get().strip()
+        if not api_key:
+            # Intentar desde entorno como fallback
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                progress_label.configure(text="❌ Error: Debes ingresar una API Key", text_color="#FF6B6B")
+                messagebox.showerror("Error de Validación", "⚠️ Debes ingresar una API Key de OpenAI en el campo de configuración.")
+                return
+        
+        # Validación 2: Puestos de trabajo
+        if not jobs_data:
+            progress_label.configure(text="❌ Error: Debes agregar al menos un puesto de trabajo", text_color="#FF6B6B")
+            messagebox.showerror("Error de Validación", "⚠️ Debes agregar al menos un puesto de trabajo antes de generar.")
             return
         
-        if not jobs_data:
-            messagebox.showerror("Error", "Debes agregar al menos un Puesto de trabajo")
+        # Validación 3: Bancos de preguntas
+        if not pools_data:
+            progress_label.configure(text="❌ Error: Debes agregar al menos un banco de preguntas", text_color="#FF6B6B")
+            messagebox.showerror("Error de Validación", "⚠️ Debes agregar al menos un banco de preguntas antes de generar.")
             return
+        
+        # Validación 4: Verificar que los puestos tengan nombre
+        for i, job in enumerate(jobs_data):
+            if not job["name"].get().strip():
+                progress_label.configure(text=f"❌ Error: El puesto #{i+1} debe tener un nombre", text_color="#FF6B6B")
+                messagebox.showerror("Error de Validación", f"⚠️ El puesto #{i+1} debe tener un nombre válido.")
+                return
+        
+        # Validación 5: Verificar que los pools tengan habilidad técnica
+        for i, pool in enumerate(pools_data):
+            if not pool["skill"].get().strip():
+                progress_label.configure(text=f"❌ Error: El pool #{i+1} debe tener una habilidad técnica", text_color="#FF6B6B")
+                messagebox.showerror("Error de Validación", f"⚠️ El pool #{i+1} debe tener una habilidad técnica válida.")
+                return
+            if pool["quantity"].get() <= 0:
+                progress_label.configure(text=f"❌ Error: El pool #{i+1} debe tener cantidad de preguntas mayor a 0", text_color="#FF6B6B")
+                messagebox.showerror("Error de Validación", f"⚠️ El pool #{i+1} debe tener una cantidad de preguntas mayor a 0.")
+                return
         
         # Corregir modelo si es necesario
         model = config_data["model"].get().strip()
         if model.startswith("pgt-"):
             model = model.replace("pgt-", "gpt-", 1)
             config_data["model"].set(model)
-            messagebox.showwarning("Modelo corregido", f"Se corrigió el nombre del modelo a: {model}")
         
         # Recolectar datos
         dialect = config_data["dialect"].get().lower()
@@ -933,15 +961,7 @@ def main_gui() -> None:
                 progress_label.configure(text="🔄 Generando con IA... Por favor espera...", text_color=COLORS["green_matrix"])
                 app.update()
                 
-                # Obtener API key del campo o del entorno
-                api_key = config_data["api_key"].get().strip()
-                if not api_key:
-                    api_key = os.getenv("OPENAI_API_KEY")
-                    if not api_key:
-                        progress_label.configure(text="❌ Error: Debes ingresar una API Key", text_color="#FF6B6B")
-                        messagebox.showerror("Error", "Debes ingresar una API Key de OpenAI en el campo de configuración.")
-                        return
-                
+                # API key ya validada arriba
                 prompt = build_prompt(dialect, config_data["use_uuid"].get(), pools, jobs, config_data["include_roles"].get())
                 seed = generate_seed_sql(prompt=prompt, model=model, api_key=api_key)
                 
